@@ -146,13 +146,20 @@ def get_disabled_quotas(f, request):
 def tenant_quota_usages(f, request, tenant_id=None):
 
     usages = f(request, tenant_id)
-
     if 'shares' not in _get_manila_disabled_quotas(request):
         shares = manila.share_list(request)
         snapshots = manila.share_snapshot_list(request)
         sn_l = manila.share_network_list(request)
         gig_s = sum([int(v.size) for v in shares])
         gig_ss = sum([int(v.size) for v in snapshots])
+
+        # NOTE(jake): usages.tally() increments 'used' by value passed to it,
+        # set 'used' to zero before calling so that this function is idempotent
+        usages['shares']['used'] = 0
+        usages['share_gigabytes']['used'] = 0
+        usages['share_snapshots']['used'] = 0
+        usages['share_snapshot_gigabytes']['used'] = 0
+        usages['share_networks']['used'] = 0
         usages.tally('shares', len(shares))
         usages.tally('share_gigabytes', gig_s)
         usages.tally('share_snapshots', len(snapshots))
